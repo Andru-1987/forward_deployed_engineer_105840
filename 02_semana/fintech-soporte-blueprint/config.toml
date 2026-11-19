@@ -1,0 +1,30 @@
+# Parametros operativos (NO secretos). Cambiar un umbral = editar este archivo, no el codigo.
+
+[llm]
+modelo = "llama-3.3-70b-versatile"
+temperatura = 0.0
+max_reintentos_validacion = 1      # reintento unico guiado con el error de Pydantic
+
+[tarifas_usd_por_millon]
+input = 0.59
+output = 0.79
+
+[reglas_negocio]
+monto_maximo_reembolso_usd = 5000.0
+umbral_confianza_hitl = 0.75       # confianza menor => humano obligatorio
+
+[rollout]
+porcentaje_canary = 5              # % de usuarios que ven la version nueva
+prompt_estable = "prompts/triaje_v1.txt"
+prompt_canary = "prompts/triaje_v2.txt"
+
+[objetivos]                        # metas de produccion (Entregable 3)
+validez_primer_intento_min = 0.98
+costo_promedio_max_usd = 0.002
+latencia_p95_max_ms = 1800
+
+[umbrales_rollback]                # kill switch del canary (Entregable 5)
+tasa_validation_error_max = 0.02
+latencia_p95_max_ms = 2500
+tasa_error_http_max = 0.01
+incremento_costo_max = 0.30

@@ -1,0 +1,17 @@
+[project]
+name = "fintech-soporte-blueprint"
+version = "0.1.0"
+description = "Blueprint de arquitectura resiliente: chat de soporte fintech con LLM en produccion"
+requires-python = ">=3.11"
+dependencies = [
+    "groq>=0.11",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
