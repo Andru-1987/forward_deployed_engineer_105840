@@ -1,0 +1,80 @@
+version: "3"
+
+# Cleans files that .gitignore excludes (venv, __pycache__, .pytest_cache, .env, *.csv, ...).
+# Source of truth is .gitignore: add a pattern there and these tasks pick it up.
+# Local tooling dirs are preserved (see KEEP).
+
+vars:
+  KEEP: -e '!.env'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  clean:preview:
+    desc: Dry run - show what clean would delete
+    cmds:
+      - git clean -ndX {{.KEEP}}
+
+  clean:
+    desc: Delete every git-ignored file (venv, caches, *.csv). Asks confirmation
+    prompt: This permanently deletes ALL git-ignored files (including .env and
+      *.csv). Continue?
+    cmds:
+      - git clean -fdX {{.KEEP}}
+
+  clean:cache:
+    desc: Delete only Python caches (__pycache__, .pytest_cache, .ruff_cache,
+      .mypy_cache)
+    cmds:
+      - find . -type d \( -name __pycache__ -o -name '.pytest_cache' -o -name
+        '.ruff_cache' -o -name '.mypy_cache' \) -not -path './.git/*' -prune
+        -exec rm -rf {} +
+
+  clean:venv:
+    desc: Delete virtual environments (venv, .venv)
+    prompt: This deletes every venv/.venv directory. Continue?
+    cmds:
+      - find . -type d \( -name venv -o -name .venv \) -not -path './.git/*'
+        -prune -exec rm -rf {} +
+
+  # Usage: task env:link PROJECT_FOLDER="02_semana/app-a 02_semana/app-b"
+  # Creates PROJECT_FOLDER/.env -> root .env (relative symlink, git-ignored).
+  env:link:
+    desc: Symlink root .env into each folder in PROJECT_FOLDER (space-separated)
+    requires:
+      vars: [PROJECT_FOLDER]
+    preconditions:
+      - sh: test -f .env
+        msg: Root .env not found. Create it first.
+    cmds:
+      - |
+        for dir in {{.PROJECT_FOLDER}}; do
+          if [ ! -d "$dir" ]; then echo "skip: $dir is not a directory"; continue; fi
+          if [ -e "$dir/.env" ] && [ ! -L "$dir/.env" ]; then
+            echo "skip: $dir/.env is a real file (not overwritten)"; continue
+          fi
+          ln -sfn "$(realpath --relative-to="$dir" .env)" "$dir/.env"
+          echo "linked: $dir/.env -> $(readlink "$dir/.env")"
+        done
+
+  # Usage: task env:unlink PROJECT_FOLDER="02_semana/app-a 02_semana/app-b"
+  # Removes only symlinks; a real .env file is never deleted.
+  env:unlink:
+    desc: Remove the .env symlink from each folder in PROJECT_FOLDER
+    requires:
+      vars: [PROJECT_FOLDER]
+    cmds:
+      - |
+        for dir in {{.PROJECT_FOLDER}}; do
+          if [ -L "$dir/.env" ]; then
+            rm "$dir/.env"; echo "unlinked: $dir/.env"
+          elif [ -e "$dir/.env" ]; then
+            echo "skip: $dir/.env is a real file (not removed)"
+          else
+            echo "skip: no .env in $dir"
+          fi
+        done

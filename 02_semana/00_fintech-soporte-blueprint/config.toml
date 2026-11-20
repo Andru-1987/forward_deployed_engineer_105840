@@ -1,7 +1,7 @@
 # Parametros operativos (NO secretos). Cambiar un umbral = editar este archivo, no el codigo.
 
 [llm]
-modelo = "llama-3.3-70b-versatile"
+modelo = "qwen/qwen3.8-27b"
 temperatura = 0.0
 max_reintentos_validacion = 1      # reintento unico guiado con el error de Pydantic
 

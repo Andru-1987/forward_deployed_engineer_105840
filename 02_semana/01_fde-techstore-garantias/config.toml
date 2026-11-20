@@ -1,14 +1,14 @@
 # Parametros operativos (NO secretos). Cambiar un umbral = editar este archivo, no el codigo.
 
 [llm]
-modelo = "llama-3.3-70b-versatile"
+modelo = "qwen/qwen3.8-27b"
 temperatura = 0.0
 max_reintentos_validacion = 1          # un unico reintento guiado (consigna PE2)
 ruta_system_prompt = "prompts/triaje_v1.txt"
 
 [tarifas_usd_por_millon]               # tarifas separadas por tipo de token
-input = 0.59
-output = 0.79
+input = 0.8
+output = 4
 
 [reglas_negocio]
 umbral_aprobacion_supervisor_usd = 50.0   # Historia de Usuario 2 de PE1: sobre este monto, Supervisor N2

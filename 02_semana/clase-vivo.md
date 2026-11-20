@@ -1,24 +1,18 @@
 **Módulo confirmado:** Semana 2 — LLMs en producción.
 
+- [Implementacion en codigo de python](./fintech-soporte-blueprint/)
+
 ## 1. Consigna del Ejercicio Final: Blueprint de Arquitectura Resiliente
 
 * **Fuente + Derivado:** Ejercicio integrador de cierre de la clase en vivo del Módulo 2 (20 minutos) diseñado para articular LLMOps, *failure-mapping*, *guardrails*, validación con Pydantic, costos, latencia y despliegue progresivo.
-
 
 * **Escenario:** Chat de soporte de una *fintech* capaz de responder preguntas de políticas, consultar el estado de un ticket y solicitar un reembolso parcial.
 * **Entregable obligatorio:**
 1. Definir el *schema* Pydantic de salida.
 2. Identificar tres fallos por etapa del *pipeline* (Recuperación, Prompting, Generación y Post-procesado).
-
-
 3. Definir una métrica de calidad, una de seguridad, una de costo y una de latencia.
 4. Especificar qué acciones requieren aprobación humana (*Human-in-the-Loop*).
 5. Diseñar un *rollout* progresivo: 5% de tráfico con la versión nueva, comparación contra la versión actual y criterio de *rollback*.
-
-
-
-
-
 ---
 
 ## 2. Solución de Referencia (con `uv`, Groq y `config.toml`)
@@ -28,264 +22,77 @@
 
 * **Derivado:** Se implementa la arquitectura aplicando los principios de contratos estrictos (`Pydantic`), telemetría de `usage`, reintento único guiado y aislamiento de secretos del Módulo 2, trasladando los parámetros operativos a `config.toml` para desacoplar la configuración del código.
 
-
+> El código de esta solución ya está implementado en `fintech-soporte-blueprint/`. Esta sección documenta solo las decisiones técnicas.
 
 ### 2.1 Estructura del Proyecto, Secretos y Configuración
 
-```text
-fintech-soporte-blueprint/
-├── .env                  # EXCLUSIVO para secretos (ignorado por Git)
-├── .env.example          # Plantilla vacía de credenciales (GROQ_API_KEY=)
-├── .gitignore            # Excluye .env, .venv/ y __pycache__/
-├── config.toml           # Parámetros del modelo, tarifas, reintentos y umbrales de negocio
-├── pyproject.toml        # Dependencias gestionadas con uv (groq, pydantic, python-dotenv)
-├── requirements.txt      # Exportado con uv para compatibilidad estándar
-├── prompts/
-│   └── triaje_v1.txt     # System prompt aislado de la lógica de ejecución
-└── src/
-    └── motor.py          # Carga de config.toml, validación Pydantic y ejecución en Groq
+* **Estructura del proyecto (Derivado):** proyecto `fintech-soporte-blueprint/` con estos elementos:
+  * `.env`: exclusivo para secretos; ignorado por Git.
+  * `.env.example`: plantilla sin valores; solo el nombre `GROQ_API_KEY`.
+  * `.gitignore`: excluye `.env`, `.venv/` y `__pycache__/`.
+  * `config.toml`: parámetros del modelo, tarifas, reintentos y umbrales de negocio.
+  * `pyproject.toml`: dependencias gestionadas con `uv` (`groq`, `pydantic`, `python-dotenv`).
+  * `requirements.txt`: exportado con `uv` para compatibilidad estándar.
+  * `prompts/triaje_v1.txt`: *system prompt* aislado de la lógica de ejecución.
+  * `src/motor.py`: carga de `config.toml`, validación Pydantic y ejecución en Groq.
 
-```
+* **Inicialización con `uv` (Derivado):** crear el proyecto fijando Python 3.11, agregar las tres dependencias (`groq`, `pydantic`, `python-dotenv`) y exportar el lock a `requirements.txt` sin hashes, para mantener compatibilidad con el flujo estándar del curso.
 
-* **Comandos de inicialización con `uv` (Derivado):**
+* **Secretos `.env.example` (Fuente + Derivado):** solo nombres de variables; nunca se suben valores reales al repositorio.
 
-```bash
-uv init --python 3.11 fintech-soporte-blueprint
-cd fintech-soporte-blueprint
-uv add groq pydantic python-dotenv
-uv export --no-hashes --format requirements-txt -o requirements.txt
+* **Parámetros operativos `config.toml` (Derivado):** tres secciones.
+  * `[llm]`: proveedor, modelo (`llama-3.3-70b-versatile`), temperatura `0.0`, máximo de reintentos de validación (`1`) y ruta del *system prompt*.
+  * `[tarifas_usd_por_millon]`: tarifas diferenciadas por tipo de token (input `0.59`, output `0.79`) para auditar el costo real.
+  * `[reglas_negocio]`: monto máximo de reembolso (`5000.0` USD) y umbral de confianza para HITL (`0.75`).
 
-```
+* **Plantilla de *prompt* `prompts/triaje_v1.txt` (Derivado):** define el rol de asistente de soporte de una Fintech y restringe la atención a tres intenciones:
+  1. `consulta_politica`: debe citar `fuente_politica`.
+  2. `estado_ticket`: requiere `ticket_id` con formato `TKT-######`.
+  3. `reembolso_parcial`: siempre `requiere_aprobacion_humana=true`.
 
-* **Archivo de secretos `.env.example` (Fuente + Derivado):**
-
-```ini
-# Solo nombres de variables; nunca subir valores reales al repositorio
-GROQ_API_KEY=
-
-```
-
-* **Archivo de parámetros operativos `config.toml` (Derivado):**
-
-```toml
-[llm]
-proveedor = "groq"
-modelo = "llama-3.3-70b-versatile"
-temperatura = 0.0
-max_reintentos_validacion = 1
-ruta_system_prompt = "prompts/triaje_v1.txt"
-
-[tarifas_usd_por_millon]
-# Tarifas diferenciadas por tipo de token para auditar el costo real
-input = 0.59
-output = 0.79
-
-[reglas_negocio]
-monto_maximo_reembolso_usd = 5000.0
-umbral_confianza_hitl = 0.75
-
-```
-
-* **Plantilla de *prompt* aislada `prompts/triaje_v1.txt` (Derivado):**
-
-```text
-Eres el asistente de soporte de una Fintech. Solo puedes atender:
-1. consulta_politica (citando fuente_politica).
-2. estado_ticket (requiere ticket_id TKT-######).
-3. reembolso_parcial (siempre requiere_aprobacion_humana=true).
-Si la consulta es ajena a la Fintech, usa fuera_de_dominio.
-Responde ÚNICAMENTE con un objeto JSON válido que cumpla este esquema:
-{schema}
-
-```
+  Toda consulta ajena a la Fintech usa `fuera_de_dominio`. El modelo responde únicamente con un objeto JSON que cumpla el esquema inyectado en el marcador `{schema}`.
 
 ### 2.2 Entregable 1: Schema Pydantic de Salida y Motor (`src/motor.py`)
 
 * **Derivado** (aplicando `BaseModel`, `Enum`, `Field`, `@model_validator`, extracción de `loc`/`msg` en `ValidationError` y medición de tokens/latencia del Módulo 2):
 
+**Carga de configuración**
 
+* Los secretos se cargan solo desde `.env` (`load_dotenv`); la configuración operativa viene de TOML.
+* Modelos Pydantic anidados validan `config.toml` al iniciar: `LLMConfig`, `TarifasConfig`, `ReglasNegocioConfig` y `AppConfig`.
+* Restricciones de tipo en la config: `temperatura` entre 0 y 2, `max_reintentos_validacion` entre 0 y 3, tarifas `> 0`, umbral de confianza entre 0 y 1.
+* `tomllib` exige abrir el archivo en binario (`rb`). La ruta se resuelve relativa al proyecto, no al directorio de ejecución.
 
-```python
-import os
-import time
-import tomllib
-from enum import Enum
-from pathlib import Path
-from typing import Optional
-from dotenv import load_dotenv
-from groq import Groq, APIError, RateLimitError
-from pydantic import BaseModel, Field, ValidationError, model_validator
+**Schema de salida `SalidaFintech`**
 
-# Carga exclusiva de secretos desde .env; la configuración operativa viene de TOML
-load_dotenv()
+| Campo | Tipo / restricción | Propósito |
+| --- | --- | --- |
+| `intencion` | `Enum` `IntencionSoporte` (`consulta_politica`, `estado_ticket`, `reembolso_parcial`, `fuera_de_dominio`) | Restringe las salidas posibles a los casos permitidos |
+| `fuente_politica` | `Optional[str]` | Obliga a citar fuente documental para mitigar alucinaciones |
+| `ticket_id` | `Optional[str]`, patrón `^TKT-\d{6}$` | Previene inyecciones o IDs malformados hacia el CRM |
+| `monto_reembolso_usd` | `float`, `>= 0`, tope leído de `config.toml` | Límite dinámico de negocio |
+| `requiere_aprobacion_humana` | `bool` | Marca el control HITL |
+| `respuesta_usuario` | `str`, `min_length=15` | Evita respuestas vacías |
+| `confianza` | `float`, entre 0 y 1 | Insumo para escalamiento |
 
+**Reglas de negocio (`@model_validator(mode="after")`)**
 
-class LLMConfig(BaseModel):
-    proveedor: str
-    modelo: str
-    temperatura: float = Field(ge=0.0, le=2.0)
-    max_reintentos_validacion: int = Field(ge=0, le=3)
-    ruta_system_prompt: str
+1. **Dinero exige humano:** un `reembolso_parcial` requiere `monto_reembolso_usd > 0` y `requiere_aprobacion_humana=True`.
+2. **Sin importes en consultas informativas:** solo `reembolso_parcial` admite monto mayor a 0.
+3. **Baja confianza escala:** si `confianza < umbral_confianza_hitl`, `requiere_aprobacion_humana` debe ser `True`.
 
+**Flujo de ejecución (`ejecutar_turno_fintech`)**
 
-class TarifasConfig(BaseModel):
-    input: float = Field(gt=0.0)
-    output: float = Field(gt=0.0)
+1. Verifica `GROQ_API_KEY`; si falta, devuelve error de etapa `CONFIGURACION`.
+2. Carga el *system prompt* e inyecta el JSON Schema del modelo en `{schema}`.
+3. Llama al modelo con temperatura de config y `response_format` JSON.
+4. Captura `RateLimitError` y `APIError` y devuelve error de etapa `INFRAESTRUCTURA_API`, sin propagar la traza.
+5. Mide latencia con `time.perf_counter` y lee `usage` (`prompt_tokens`, `completion_tokens`).
+6. Valida la respuesta con `model_validate_json`. Si pasa, devuelve datos más telemetría: tokens de entrada y salida, costo en USD y latencia en ms.
+7. Si falla `ValidationError`, extrae `loc` y `msg` de cada error y los reinyecta al prompt como corrección guiada. Se hace un único reintento (`1 + max_reintentos_validacion` intentos totales).
+8. Agotados los intentos, devuelve error de etapa `VALIDACION_SALIDA` con la lista de errores.
 
-
-class ReglasNegocioConfig(BaseModel):
-    monto_maximo_reembolso_usd: float = Field(gt=0.0)
-    umbral_confianza_hitl: float = Field(ge=0.0, le=1.0)
-
-
-class AppConfig(BaseModel):
-    llm: LLMConfig
-    tarifas_usd_por_millon: TarifasConfig
-    reglas_negocio: ReglasNegocioConfig
-
-
-def cargar_configuracion(ruta_toml: str = "config.toml") -> AppConfig:
-    # tomllib requiere apertura en binario ('rb') y Pydantic valida los tipos al iniciar
-    ruta = Path(__file__).resolve().parent.parent / ruta_toml
-    with ruta.open("rb") as f:
-        return AppConfig.model_validate(tomllib.load(f))
-
-
-CONFIG = cargar_configuracion()
-
-
-class IntencionSoporte(str, Enum):
-    # Restringe las salidas posibles exclusivamente a los casos permitidos por la fintech
-    consulta_politica = "consulta_politica"
-    estado_ticket = "estado_ticket"
-    reembolso_parcial = "reembolso_parcial"
-    fuera_de_dominio = "fuera_de_dominio"
-
-
-class SalidaFintech(BaseModel):
-    intencion: IntencionSoporte
-    # Obliga a citar fuente documental para mitigar alucinaciones en políticas
-    fuente_politica: Optional[str] = Field(
-        default=None,
-        description="Sección del documento de políticas citado, o None si no aplica",
-    )
-    # Patrón estricto para prevenir inyecciones o IDs malformados hacia el CRM
-    ticket_id: Optional[str] = Field(
-        default=None,
-        pattern=r"^TKT-\d{6}$",
-        description="Identificador del ticket en formato TKT-123456",
-    )
-    # El límite máximo se lee dinámicamente desde config.toml
-    monto_reembolso_usd: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=CONFIG.reglas_negocio.monto_maximo_reembolso_usd,
-    )
-    requiere_aprobacion_humana: bool
-    respuesta_usuario: str = Field(..., min_length=15)
-    confianza: float = Field(..., ge=0.0, le=1.0)
-
-    @model_validator(mode="after")
-    def validar_reglas_fintech(self) -> "SalidaFintech":
-        # Regla 1: Todo movimiento de dinero exige validación humana (Human-in-the-Loop)
-        if self.intencion == IntencionSoporte.reembolso_parcial:
-            if self.monto_reembolso_usd <= 0:
-                raise ValueError("Un reembolso_parcial exige monto_reembolso_usd > 0")
-            if not self.requiere_aprobacion_humana:
-                raise ValueError("Todo reembolso_parcial debe marcar requiere_aprobacion_humana=True")
-
-        # Regla 2: Impide disparar importes monetarios en consultas informativas
-        if self.intencion != IntencionSoporte.reembolso_parcial and self.monto_reembolso_usd > 0:
-            raise ValueError("Solo la intención reembolso_parcial admite monto_reembolso_usd > 0")
-
-        # Regla 3: Escala automáticamente a humano si la confianza cae bajo el umbral configurado
-        umbral = CONFIG.reglas_negocio.umbral_confianza_hitl
-        if self.confianza < umbral and not self.requiere_aprobacion_humana:
-            raise ValueError(f"Confianza menor a {umbral} requiere supervisión humana obligatoria")
-
-        return self
-
-
-def cargar_system_prompt() -> str:
-    ruta_prompt = Path(__file__).resolve().parent.parent / CONFIG.llm.ruta_system_prompt
-    plantilla = ruta_prompt.read_text(encoding="utf-8")
-    return plantilla.format(schema=SalidaFintech.model_json_schema())
-
-
-def calcular_costo_usd(tokens_in: int, tokens_out: int) -> float:
-    costo_in = (tokens_in / 1_000_000) * CONFIG.tarifas_usd_por_millon.input
-    costo_out = (tokens_out / 1_000_000) * CONFIG.tarifas_usd_por_millon.output
-    return round(costo_in + costo_out, 6)
-
-
-def ejecutar_turno_fintech(consulta_usuario: str) -> dict:
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        return {"ok": False, "etapa": "CONFIGURACION", "detalle": "Falta GROQ_API_KEY en .env"}
-
-    cliente = Groq(api_key=api_key)
-    prompt_sistema = cargar_system_prompt()
-    prompt_actual = consulta_usuario
-    total_intentos = 1 + CONFIG.llm.max_reintentos_validacion
-    errores = []
-
-    for intento in range(1, total_intentos + 1):
-        inicio = time.perf_counter()
-        try:
-            resp = cliente.chat.completions.create(
-                model=CONFIG.llm.modelo,
-                temperature=CONFIG.llm.temperatura,
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": prompt_sistema},
-                    {"role": "user", "content": prompt_actual},
-                ],
-            )
-        except (RateLimitError, APIError) as err_api:
-            # Captura controlada de fallos de red o límites de cuota del proveedor
-            return {"ok": False, "etapa": "INFRAESTRUCTURA_API", "detalle": str(err_api)}
-
-        latencia_ms = int((time.perf_counter() - inicio) * 1000)
-        tokens_in = resp.usage.prompt_tokens
-        tokens_out = resp.usage.completion_tokens
-
-        try:
-            salida = SalidaFintech.model_validate_json(resp.choices[0].message.content)
-            return {
-                "ok": True,
-                "modelo": CONFIG.llm.modelo,
-                "intento": intento,
-                "datos": salida.model_dump(),
-                "telemetria": {
-                    "tokens_in": tokens_in,
-                    "tokens_out": tokens_out,
-                    "costo_usd": calcular_costo_usd(tokens_in, tokens_out),
-                    "latencia_ms": latencia_ms,
-                },
-            }
-        except ValidationError as e:
-            # Extrae ubicación exacta (loc) y explicación (msg) para guiar el reintento
-            errores = [
-                {"campo": " -> ".join(map(str, err["loc"])), "motivo": err["msg"]}
-                for err in e.errors()
-            ]
-            prompt_actual = (
-                f"{consulta_usuario}\n\n"
-                f"ERROR DE VALIDACIÓN EN TU RESPUESTA ANTERIOR: {errores}. "
-                f"Corrígelo y devuelve solo el JSON."
-            )
-
-    return {"ok": False, "etapa": "VALIDACION_SALIDA", "errores": errores}
-
-
-if __name__ == "__main__":
-    print(
-        ejecutar_turno_fintech(
-            "Quiero pedir un reembolso parcial de 150 dolares por un cobro duplicado en el ticket TKT-482910."
-        )
-    )
-
-```
+**Costo:** `(tokens_in / 1M × tarifa_input) + (tokens_out / 1M × tarifa_output)`, redondeado a 6 decimales.
 
 ### 2.3 Entregable 2: Failure-Mapping (Tres Fallos por Etapa)
 
@@ -338,10 +145,6 @@ if __name__ == "__main__":
 2. **Tasa de `ValidationError` $> 2\%$** durante 15 minutos seguidos.
 3. **Latencia P95 $> 2.500\text{ ms}$** o errores HTTP `5xx`/`429` no recuperados $> 1\%$.
 4. **Incremento de costo $> 30\%$** por conversación frente al *baseline* de `v1`.
-
-
-
-
 
 ---
 

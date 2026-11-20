@@ -22,7 +22,7 @@ dict crudo -> Entrada (Pydantic)  --invalida--> error VALIDACION_ENTRADA (0 toke
 
 ## Estructura
 
-```text
+```bash
 .env.example      solo nombres de variables (copiar a .env; no se versiona)
 config.toml       modelo, tarifas, reintentos, umbral de supervisor, meta del KPI
 prompts/          plantilla del system prompt, aislada del codigo
