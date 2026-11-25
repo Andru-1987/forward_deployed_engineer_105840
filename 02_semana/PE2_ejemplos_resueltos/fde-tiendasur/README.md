@@ -9,7 +9,7 @@ Podés elegir entre **cuatro proveedores** sin tocar el motor:
 | Proveedor | Modelo del ejemplo | Plan | Clave en `.env` | Dónde se crea la clave |
 |---|---|---|---|---|
 | Groq | `openai/gpt-oss-20b` | gratis, con límites de uso | `GROQ_API_KEY` | [console.groq.com/keys](https://console.groq.com/keys) |
-| Google | `gemini-3.1-flash-lite` | gratis, con límites de uso | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| Google | `gemini-3.5-flash-lite` | gratis, con límites de uso | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | OpenAI | `gpt-6-luna` | pago (prepago desde 5 USD) | `OPENAI_API_KEY` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
 | Anthropic | `claude-haiku-5-5` | pago (prepago desde 5 USD) | `ANTHROPIC_API_KEY` | [platform.claude.com](https://platform.claude.com) |
 
