@@ -1,0 +1,14 @@
+# Secretos: nunca al repositorio
+.env
+.env.example
+
+# Entorno y cachés de Python
+.venv/
+__pycache__/
+*.py[oc]
+.pytest_cache/
+
+# Sistema y editor
+.DS_Store
+Thumbs.db
+.vscode/

@@ -1,0 +1,58 @@
+# Parámetros del motor. Este archivo SÍ se sube a GitHub: no tiene secretos.
+# Las claves de las API van en .env, nunca acá.
+
+# Proveedor activo: openai, anthropic, google o groq.
+# También podés elegirlo al correr:  uv run python src/motor.py --proveedor google
+proveedor = "groq"
+
+[motor]
+max_reintentos_validacion = 1    # la consigna pide un solo reintento
+timeout_segundos = 30
+max_tokens = 1000                # tope de tokens de salida (Anthropic lo exige)
+
+[prompt]
+archivo = "prompts/sistema_v1.txt"
+version = "sistema_v1"
+
+[kpi]
+# Metas del KPI técnico de tu PE1. Se comparan con los promedios de src/medir.py.
+meta_latencia_ms = 5000
+meta_costo_usd = 0.001
+
+# --- Un bloque por proveedor -----------------------------------------------------
+# precio_entrada y precio_salida: USD por millón de tokens, tarifa del plan PAGO.
+# En los planes gratuitos no pagás, pero el motor calcula cuánto costaría.
+# Verificá modelos y precios en la página de cada proveedor antes de medir.
+
+[proveedores.openai]
+modelo = "gpt-6-luna"
+variable_clave = "OPENAI_API_KEY"
+plan = "pago"
+precio_entrada = 0.10
+precio_salida = 0.50
+# https://developers.openai.com/api/docs/pricing
+
+[proveedores.anthropic]
+modelo = "claude-haiku-5-5"
+variable_clave = "ANTHROPIC_API_KEY"
+plan = "pago"
+precio_entrada = 0.10
+precio_salida = 0.50
+# https://platform.claude.com/docs/en/about-claude/pricing
+
+[proveedores.google]
+modelo = "gemini-3.5-flash-lite"
+variable_clave = "GEMINI_API_KEY"
+plan = "gratis"
+precio_entrada = 0.30
+precio_salida = 2.50
+# https://ai.google.dev/gemini-api/docs/pricing
+# Ojo: en el plan gratuito Google puede usar tus prompts para mejorar sus productos.
+
+[proveedores.groq]
+modelo = "openai/gpt-oss-20b"
+variable_clave = "GROQ_API_KEY"
+plan = "gratis"
+precio_entrada = 0.10
+precio_salida = 0.50
+# https://groq.com/pricing  ·  límites del plan gratuito: https://console.groq.com/docs/rate-limits
