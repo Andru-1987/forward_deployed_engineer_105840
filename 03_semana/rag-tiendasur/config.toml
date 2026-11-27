@@ -1,0 +1,36 @@
+# Parámetros de la app (NO secretos). Cambiar un valor = editar este archivo, no el código.
+# Los secretos (GROQ_API_KEY, COHERE_API_KEY) viven en .env.
+
+roles = ["soporte", "rrhh", "admin"]
+coleccion = "fibrasur_rag"
+
+[rutas]
+docs_cliente = "docs_cliente"
+chroma = "./chroma_db"
+cola_humana = "cola_humana.jsonl"
+
+[chunking]
+tamano = 600           # caracteres por fragmento
+solapamiento = 60      # caracteres compartidos entre fragmentos vecinos (10%)
+
+[recuperacion]
+k = 4                  # fragmentos que llegan al prompt
+rrf_k = 60             # constante de Reciprocal Rank Fusion
+
+[llm]
+temperatura = 0.0
+# Fallback: la UI intenta listar los modelos vivos con client.models.list().
+modelos = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b"]
+
+# Cohere: el modelo más liviano de la familia, multilingüe (incluye español).
+# Se usa igual en ingesta y consulta. Su dimensión es fija: 384.
+[embedding]
+modelo = "embed-multilingual-light-v3.0"
+dim = 384
+
+# usuario -> rol. En producción viene del IdP (SSO / grupos de AD).
+[usuarios]
+"ana.soporte" = "soporte"
+"martin.soporte" = "soporte"
+"lucia.rrhh" = "rrhh"
+"carlos.admin" = "admin"

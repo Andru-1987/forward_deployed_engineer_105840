@@ -1,0 +1,24 @@
+[project]
+name = "rag-tiendasur"
+version = "0.1.0"
+description = "Mini-RAG híbrido con permisos por rol (FibraSur Telecom)"
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb>=1.0",
+    "rank-bm25>=0.2.2",
+    "streamlit>=1.40",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.3",
+    "groq>=0.31",
+    "cohere>=5.13",
+    "pypdf>=4.0",
+    "numpy",
+    "pandas",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

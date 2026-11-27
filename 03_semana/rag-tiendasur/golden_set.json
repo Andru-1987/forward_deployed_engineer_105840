@@ -1,0 +1,12 @@
+[
+  {"id": 1, "tipo": "normal", "usuario": "ana.soporte", "consulta": "Que hago con el error ERR_9921_X?", "documento_esperado": "manual_router_fs3000", "texto_clave": "ERR_9921_X"},
+  {"id": 2, "tipo": "normal", "usuario": "ana.soporte", "consulta": "El cliente tiene ERR_9912_X, que significa?", "documento_esperado": "manual_router_fs3000", "texto_clave": "ERR_9912_X"},
+  {"id": 3, "tipo": "normal", "usuario": "ana.soporte", "consulta": "Puedo reiniciar remoto a un cliente SLA Oro en horario habil?", "documento_esperado": "manual_router_fs3000", "texto_clave": "SLA Oro"},
+  {"id": 4, "tipo": "normal", "usuario": "ana.soporte", "consulta": "Que hago si 80 clientes del mismo nodo no tienen servicio?", "documento_esperado": "protocolo_escalamiento_soporte", "texto_clave": "corte masivo"},
+  {"id": 5, "tipo": "normal", "usuario": "martin.soporte", "consulta": "Cuantos dias de vacaciones me corresponden con 7 años de antiguedad?", "documento_esperado": "politica_vacaciones", "texto_clave": "21 días"},
+  {"id": 6, "tipo": "normal", "usuario": "lucia.rrhh", "consulta": "Cual es la banda salarial de un agente de soporte nivel 2?", "documento_esperado": "bandas_salariales_2025", "texto_clave": "Nivel 2"},
+  {"id": 7, "tipo": "sin_respuesta", "usuario": "martin.soporte", "consulta": "Cual es el horario del comedor de la oficina?", "documento_esperado": null},
+  {"id": 8, "tipo": "sin_respuesta", "usuario": "ana.soporte", "consulta": "Como configuro una VPN IPsec en el router FS-3000?", "documento_esperado": null},
+  {"id": 9, "tipo": "restringido", "usuario": "ana.soporte", "consulta": "Cuanto presupuesto tiene el proyecto Alpha-X?", "documento_prohibido": "presupuesto_2025"},
+  {"id": 10, "tipo": "restringido", "usuario": "martin.soporte", "consulta": "Cuanto gana un analista NOC nivel 3?", "documento_prohibido": "bandas_salariales_2025"}
+]
